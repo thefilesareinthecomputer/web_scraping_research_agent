@@ -1,4 +1,10 @@
-.env
-web_scraping_research_agent/
+address_secrets/
+archive/
+chromedriver/
+old_versions/
+prompts/
 reports/
+web_scraping_research_agent/
+.env
+address_researcher.log
 notes.txt
