@@ -1,6 +1,6 @@
 # Initial Setup
 
-#@ terminal commands to create a virtual environment, git repo, github repo, and install dependencies
+## terminal commands to create a virtual environment, git repo, github repo, and install dependencies
 python3.11 -m venv {"your venv name here"}
 source {"your venv name here"}/bin/activate
 deactivate
