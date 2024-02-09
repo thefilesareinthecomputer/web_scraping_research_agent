@@ -104,48 +104,13 @@ import webbrowser
 load_dotenv()
 
 data_source_urls = os.getenv('URLS')
-# # gather all 10 of the base URLs to be indexed and scraped
-# urls = [os.getenv(f'URL_{i}') for i in range(1, 11) if os.getenv(f'URL_{i}') is not None]
+# gather all 10 of the base URLs to be indexed and scraped
+urls = [os.getenv(f'URL_{i}') for i in range(1, 11) if os.getenv(f'URL_{i}') is not None]
 
 with open('restaurant_addresses.json', 'r') as file:
     restaurant_addresses = json.load(file)
 
 addresses_list = list(restaurant_addresses.values())
-
-# restaurant_addresses = {  
-#     'Chicago': '1300 N Dearborn St, Chicago, IL 60610', 
-#     'Minneapolis': '6801 France Ave S, Edina, MN 55435', 
-#     'Yountville': '6725 Washington St, Yountville, CA 94599', 
-#     'Toronto': '3401 Dufferin St, Toronto, ON M6A 2T9, Canada', 
-#     'Meatpacking': '9 9th Ave, New York, NY 10014',  
-#     'Columbus': '4120 Worth Ave, Columbus, OH 43219',
-#     'Dallas': '3133 Knox St, Dallas, TX 75205',
-#     'Nashville': '2101 Green Hills Village Dr, Nashville, TN 37215',
-#     'West Palm Beach': '560 Okeechobee Blvd, West Palm Beach, FL 33401',
-#     'Charlotte': '6903 Phillips Pl Ct, Charlotte, NC 28210',
-#     'Marin': '1750 Redwood Hwy, Corte Madera, CA 94925', 
-#     'Oak Brook': '1300 W 22nd St, Oak Brook, IL 60523',
-#     'Jacksonville': '4831 Village Shops Way, Jacksonville, FL 32246',
-#     'Guesthouse New York': '55 Gansevoort St, New York, NY 10014',
-#     'San Francisco': '590 20th St, San Francisco, CA 94107', 
-#     'Aynho': 'AYNHOE PARK, Aynho, Banbury OX17 3BQ, United Kingdom', 
-#     'Indianapolis': '4501 N Michigan Rd, Indianapolis, IN 46228', 
-#     'Cleveland': '4009 Orange Place Beachwood, OH 44122',  
-#     'Madrid': 'Plaza Marques De Salamanca 5 28006 Madrid, Spain',  
-#     'Palo Alto': '180 El Camino Real, Building B Palo Alto, CA 94304', 
-#     'Montecito': '1486 East Valley Road Montecito, CA 93108',  
-#     'Paris': '23 Avenue des Champs Elysées 75008 Paris, France',  
-#     'Newport Beach': '1101 Newport Center Drive Newport Beach, CA 92660',  
-#     'Aspen': '434 E Cooper Ave. Aspen, CO 81611',  
-#     'Milan': 'Palazzo del Principe di Piombino Corso Venezia, Milan, IT',  
-#     'London': '7 Burlington Gardens, Mayfair, London, W1S 3ES',  
-#     'New Jersey': '315 Madison Ave. Morristown. NJ 07960',
-#     'Detroit': '300 S. Old Woodward Birmingham, MI 48009',
-#     'Raleigh': '4120 Lassiter Mill Rd Raleigh, NC 27609',  
-#     'Houston': '4055 Westheimer Rd. Houston, TX 77027',
-# }
-
-# addresses_list = list(restaurant_addresses.values())
 
 # CONSTANTS ###################################################################################################################################
 
