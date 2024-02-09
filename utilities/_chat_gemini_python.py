@@ -3,13 +3,9 @@
 
 from dotenv import load_dotenv
 import google.generativeai as genai
+import json
 import os
 import subprocess
-import json
-import pathlib
-import textwrap
-from IPython.display import display
-from IPython.display import Markdown
 
 # bring in the environment variables from the .env file
 load_dotenv()
@@ -41,7 +37,7 @@ primer_response = primer.text
 print(primer_response)
 
 exit_words = ['exit', 'quit', 'stop', 'end', 'bye', 'goodbye', 'done', 'break']
-    
+
 while True:
         user_input = input('\n\nUser: ')
         
@@ -69,29 +65,18 @@ while True:
             break
 
         else:
-            response = chat.send_message(f'{llm_prompt}', stream=True)
+            response = chat.send_message(f'{llm_prompt}')
             if response:
-                for chunk in response:
-                    if hasattr(chunk, 'parts'):
-                        # Concatenate the text from each part
-                        full_text = ''.join(part.text for part in chunk.parts)
-                        print(full_text)
-                    else:
-                        # If it's a simple response, just speak and print the text
-                        print(chunk.text)
+                print(response.text)
             if not response:
                 attempt_count = 1  # Initialize re-try attempt count
                 while attempt_count < 5:
-                    response = chat.send_message(f'{llm_prompt}', stream=True)
+                    response = chat.send_message(f'{llm_prompt}')
                     attempt_count += 1  # Increment attempt count
                     if response:
-                        for chunk in response:
-                            if hasattr(chunk, 'parts'):
-                                # Concatenate the text from each part
-                                full_text = ''.join(part.text for part in chunk.parts)
-                                print(full_text)
-                            else:
-                                # If it's a simple response, just speak and print the text
-                                print(chunk.text)
+                        print(response.text)
                     else:
                         print('Chat failed.')
+                        
+                        
+                        
