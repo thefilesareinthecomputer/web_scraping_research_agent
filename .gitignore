@@ -4,6 +4,7 @@ chromedriver/
 old_versions/
 prompts/
 reports/
+reports_2/
 reports_processed/
 web_scraping_research_agent/
 address_secrets.json
