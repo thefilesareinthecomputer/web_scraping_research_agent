@@ -107,8 +107,12 @@ data_source_urls = os.getenv('URLS')
 # gather all 10 of the base URLs to be indexed and scraped
 urls = [os.getenv(f'URL_{i}') for i in range(1, 11) if os.getenv(f'URL_{i}') is not None]
 
-with open('restaurant_addresses.json', 'r') as file:
-    restaurant_addresses = json.load(file)
+script_directory = os.path.dirname(os.path.abspath(__file__))
+with open(f'{script_directory}/address_secrets.json', 'r') as file:
+    restaurant_address_dictionary = json.load(file)
+
+# extract the values from each key and add them to a list of values as strings
+restaurant_addresses = {key: str(value) for key, value in restaurant_address_dictionary.items()}
 
 addresses_list = list(restaurant_addresses.values())
 
