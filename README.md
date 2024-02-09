@@ -1,6 +1,6 @@
 # Initial Setup
 
-## terminal commands to create a virtual environment, git repo, github repo, and install dependencies
+## Terminal commands to create a virtual environment, git repo, github repo, and install dependencies
 ```
 python3.11 -m venv {"your venv name here"}
 source {"your venv name here"}/bin/activate
@@ -16,21 +16,37 @@ pip install --upgrade pip certifi
 pip install beautifulsoup4 selenium python-dotenv requests webdriver-manager pandas fake_useragent tqdm Pyarrow simplekml pyopenssl ndg-httpsclient pyasn1 google-generativeai google-api-python-client howdoi wikipedia ipython jupyter
 ```
 
-## download the correct version of the google chrome driver from this link, unzip it, and place it in your project directory:
+## Download the correct version of the google chrome driver from this link, unzip it, and place it in your project directory:
 https://googlechromelabs.github.io/chrome-for-testing/#stable
 
-## module description: 
+## Module description: 
 A search automation tool designed to gather all available public data about restaurants within proximity of a given list of addresses. 
 
-## module functional summary: 
+## Module functional summary: 
 This module is a web scraping research agent that uses the Google Maps API to find nearby restaurants based on a provided address and then scrapes their websites for menu links. The data is then saved to a JSON file and a CSV file. 
 
 ## Data sources:
 ```
-Google Maps (geocode API + text search API + search nearby API + place details API + distance matrix API)
+CURRENTLY IN USE: Google Maps (geocode API + text search API + search nearby API + place details API + distance matrix API)
 OpenWeather (historical weather data API)
 Wikipedia (demographic and economic data)
 Census (demographic data)
+Data.gov (demographic and economic data, business data, etc.)
+Social Media (restaurant data)
+Restaurants' websites (menu data)
+Restaurant booking sites (restaurant detail and sentiment data)
+Restaurant review / award / blog sites (restaurant detail and sentiment data, articles, etc.)
+URLs currently listed in the .env URLS variable (we likely need a custom scraper for each website):
+https://www.opentable.com/
+https://resy.com/
+https://www.exploretock.com/
+https://www.yelp.com/
+https://www.tripadvisor.com/
+https://www.eater.com/
+https://guide.michelin.com/en
+https://www.kayak.com/
+https://foursquare.com/
+https://data.gov/
 ```
 
 ## Execution:
