@@ -1,18 +1,35 @@
 '''
 
-module description: 
+# module description: 
 a search automation tool designed to gather all available public data about restaurants within proximity of a given address. 
+a data aggregation and summarization engine to inform business decision making.
 
-module functional summary: 
+# module functional summary: 
 This module is a web scraping research agent that uses the Google Maps API to find nearby restaurants based on a provided address and then scrapes their websites for menu links. The data is then saved to a JSON file and a CSV file. 
 
-Data sources:
-Google Maps (geocode API + text search API + search nearby API + place details API + distance matrix API)
+# Data sources:
+CURRENTLY IN USE: Google Maps (geocode API + text search API + search nearby API + place details API + distance matrix API)
 OpenWeather (historical weather data API)
 Wikipedia (demographic and economic data)
 Census (demographic data)
+Data.gov (demographic and economic data, business data, etc.)
+Social Media (restaurant data)
+Restaurants' websites (menu data)
+Restaurant booking sites (restaurant detail and sentiment data)
+Restaurant review / award / blog sites (restaurant detail and sentiment data, articles, etc.)
+URLs currently listed in the .env URLS variable (we likely need a custom scraper for each website):
+https://www.opentable.com/
+https://resy.com/
+https://www.exploretock.com/
+https://www.yelp.com/
+https://www.tripadvisor.com/
+https://www.eater.com/
+https://guide.michelin.com/en
+https://www.kayak.com/
+https://foursquare.com/
+https://data.gov/
 
-Execution:
+# Execution:
 input: Address string 
 (working) the class is initialized and the data is loaded from the json file if it exists.
 (working) the file paths for the json and csv files are constructed based on the source address string and the file drop path environment variable.
@@ -25,16 +42,24 @@ input: Address string
 (working) the place details are fetched for each place_id in the self.all_place_ids set, but only if the place_id is not already in the self.data dictionary or if the place_id is in the self.data dictionary and the last_updated timestamp is more than 2 days old.
 (working) output_1: the updated self.data dictionary is saved to the json file and the csv file.
 (not yet implemented) for all results that returned a valid website, the SpiderCrawlerMenuScraper class will visit each website and navigate itself to the menu page and gather the menu links. the menu links are then added to the self.data dictionary and the updated self.data dictionary is saved to the json file and the csv file.
+(not yet implemented) the menu data is parsed and saved to the json file and the csv file after normalizing it. the menu data can also be augmented / stitched / aggregated if it is found in other data sources such as the restaurant booking sites, the restaurant review / award / blog sites, or the social media sites.
 
-module required enhancements:
-ACTIVE NOW IN THIS SPRINT: add a new class called SpiderCrawlerMenuScraper that crawls the websites of the restaurants found in the AddressResearcher and gathers the menu links and saves them. the menu links are then added to the self.data dictionary and the updated self.data dictionary is saved to the json file and the csv file.
+# module planned updates (roadmap):
+QUEUE: add some type of knowledge context and semantic parameters into the system so that the web scraping spider crawler bots can have a better sense of what they are looking for and what they are looking at and when their tasks are complete and which actions to take in any situation. 
+QUEUE: add a new class called SpiderCrawlerMenuScraper that crawls the websites of the restaurants found in the AddressResearcher and gathers the menu links and saves them. the menu links are then added to the self.data dictionary and the updated self.data dictionary is saved to the json file and the csv file.
+QUEUE: scrape and parse the menu data (the body text of the menu page or the menu pdf) and save it to the json file and the csv file after normalizing it.
+QUEUE: add menu price summary statistics to each object containing averages of the menu data pricing in a standard format such as: "average appetizer price, average salad price, average entree price, average side price, average dessert price, average cocktail price, average wine glass price, average beer price," etc.
+QUEUE: scrape additional data points for each business such as: michelin stars, articke links, yelp links, tripadvisor links, social media, overall sentiment, etc. 
 QUEUE: add a new class called CityResearcher that renders an additional report about general city demographic and economic data for the city in which the address is located. the report will include historical weather trends from the OpenWeather API, and demographic information from all other available sources like wikipedia, yfinance, census, etc.
 QUEUE: add new functions to save the data to KML and geojson files based on the main json file after additional data has been scraped.
+QUEUE: label the baseline dataset with classification labels for the type of cuisine (american, japanese, barbecue, italian, mexican, vegan, pan asian, indian, spanish, carribean, etc.), style of service (counter service, fast casual, full service, fine dining, tasting menu, etc.), operating hours by day period (early only, early to mid day, early to late, mid day to late, late only), tiers of proximity to the address (neighbors, within 1km, within 5km, within 10km, etc.), and other relevant labels.
+QUEUE: use feature discovery to determine which features are most important for the classification model, and then train a classification model to predict the labels for future results.
+QUEUE: once base classifications are determined, then classify all entities as "relevant" or "non-relevant" to our needs, begin keeping record of business names / types that are not relevant, and then modify the code to filter out those non-relevant records before calling the google place details api to avoid unnecessary api calls and charges.
+
 
 '''
 # IMPORTS ###################################################################################################################################
 
-logging.info(f"Importing modules...")
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
@@ -42,6 +67,8 @@ from fake_useragent import UserAgent
 from functools import wraps
 from math import radians, cos, sin, asin, sqrt
 from pandas import json_normalize
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
@@ -73,76 +100,107 @@ import webbrowser
 
 # CUSTOM IMPORTS ##############################################################################################################################
 
-logging.info(f"Importing addresses from custom search_parameters module...")
-from address_secrets.search_parameters import addresses
-addresses_list = list(addresses.values())
-logging.info(f"Addresses: {addresses_list}")
+# Load environment variables
+load_dotenv()
+
+data_source_urls = os.getenv('URLS')
+# # gather all 10 of the base URLs to be indexed and scraped
+# urls = [os.getenv(f'URL_{i}') for i in range(1, 11) if os.getenv(f'URL_{i}') is not None]
+
+with open('restaurant_addresses.json', 'r') as file:
+    restaurant_addresses = json.load(file)
+
+addresses_list = list(restaurant_addresses.values())
+
+# restaurant_addresses = {  
+#     'Chicago': '1300 N Dearborn St, Chicago, IL 60610', 
+#     'Minneapolis': '6801 France Ave S, Edina, MN 55435', 
+#     'Yountville': '6725 Washington St, Yountville, CA 94599', 
+#     'Toronto': '3401 Dufferin St, Toronto, ON M6A 2T9, Canada', 
+#     'Meatpacking': '9 9th Ave, New York, NY 10014',  
+#     'Columbus': '4120 Worth Ave, Columbus, OH 43219',
+#     'Dallas': '3133 Knox St, Dallas, TX 75205',
+#     'Nashville': '2101 Green Hills Village Dr, Nashville, TN 37215',
+#     'West Palm Beach': '560 Okeechobee Blvd, West Palm Beach, FL 33401',
+#     'Charlotte': '6903 Phillips Pl Ct, Charlotte, NC 28210',
+#     'Marin': '1750 Redwood Hwy, Corte Madera, CA 94925', 
+#     'Oak Brook': '1300 W 22nd St, Oak Brook, IL 60523',
+#     'Jacksonville': '4831 Village Shops Way, Jacksonville, FL 32246',
+#     'Guesthouse New York': '55 Gansevoort St, New York, NY 10014',
+#     'San Francisco': '590 20th St, San Francisco, CA 94107', 
+#     'Aynho': 'AYNHOE PARK, Aynho, Banbury OX17 3BQ, United Kingdom', 
+#     'Indianapolis': '4501 N Michigan Rd, Indianapolis, IN 46228', 
+#     'Cleveland': '4009 Orange Place Beachwood, OH 44122',  
+#     'Madrid': 'Plaza Marques De Salamanca 5 28006 Madrid, Spain',  
+#     'Palo Alto': '180 El Camino Real, Building B Palo Alto, CA 94304', 
+#     'Montecito': '1486 East Valley Road Montecito, CA 93108',  
+#     'Paris': '23 Avenue des Champs Elysées 75008 Paris, France',  
+#     'Newport Beach': '1101 Newport Center Drive Newport Beach, CA 92660',  
+#     'Aspen': '434 E Cooper Ave. Aspen, CO 81611',  
+#     'Milan': 'Palazzo del Principe di Piombino Corso Venezia, Milan, IT',  
+#     'London': '7 Burlington Gardens, Mayfair, London, W1S 3ES',  
+#     'New Jersey': '315 Madison Ave. Morristown. NJ 07960',
+#     'Detroit': '300 S. Old Woodward Birmingham, MI 48009',
+#     'Raleigh': '4120 Lassiter Mill Rd Raleigh, NC 27609',  
+#     'Houston': '4055 Westheimer Rd. Houston, TX 77027',
+# }
+
+# addresses_list = list(restaurant_addresses.values())
 
 # CONSTANTS ###################################################################################################################################
-
-'''Note: If this runs once daily and stores the changes in a database and monitors state, it will be a market monitoring system instead of a one-off market 
-comparison report generator.'''
-
-# call_depth = threading.local()
-# call_depth.counter = 0  # Initialize the counter
-
-# class CallDepthFilter(logging.Filter):
-#     def filter(self, record):
-#         depth = getattr(call_depth, 'counter', 0)
-#         record.call_depth = depth
-#         return True
-
-# def track_call_depth(func):
-#     @wraps(func)
-#     def wrapper(*args, **kwargs):
-#         if not hasattr(call_depth, 'counter'):
-#             call_depth.counter = 0
-#         call_depth.counter += 1
-#         try:
-#             result = func(*args, **kwargs)
-#         finally:
-#             call_depth.counter -= 1
-#         return result
-#     return wrapper
-
-# logging.basicConfig(
-#     level=logging.INFO,
-#     format='%(asctime)s - %(levelname)s - [Depth: %(call_depth)s] - %(message)s'
-# )
-# logger = logging.getLogger(__name__)
-# logger.addFilter(CallDepthFilter())
-
-# logging.info(f"Logging activated for {__name__} module")
 
 # Configure logging
 logging.basicConfig(filename='address_researcher.log', level=logging.INFO,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-# Load environment variables
-load_dotenv()
-# establish the path for saving data
+# establish the path for saving data and make it if it doesn't exist
 FILE_DROP_PATH = os.getenv('FILE_DROP_PATH')
-# make the file drop path if it doesn't exist
 if not os.path.exists(FILE_DROP_PATH):
     os.makedirs(FILE_DROP_PATH)
-# gather all 10 of the base URLs to be indexed and scraped
-urls = [os.getenv(f'URL_{i}') for i in range(1, 11) if os.getenv(f'URL_{i}') is not None]
-logging.info(f"URLs to be indexed and scraped: {urls}")
+
+def create_ssl_context():
+    return ssl.create_default_context(cafile=certifi.where())
+
+ssl._create_default_https_context = create_ssl_context
+context = create_ssl_context()
+print(f"""SSL Context Details: 
+    CA Certs File: {context.cert_store_stats()} 
+    Protocol: {context.protocol} 
+    Options: {context.options} 
+    Verify Mode: {context.verify_mode}
+    Verify Flags: {context.verify_flags}
+    Check Hostname: {context.check_hostname}
+    CA Certs Path: {certifi.where()}
+    """)
 
 # Set API keys and other information from environment variables
 # the open weather api key is not currently being used but will be used in the CityResearcher when we add the weather data to the report
 # open_weather_api_key = os.getenv('OPEN_WEATHER_API_KEY')
 
-address = "23 Avenue des Champs Elysées 75008 Paris, France"
-logging.info(f"Address of current search: {address}")
+# FUNCTIONS ###################################################################################################################################
 
-# FUNCTION DEFINITIONS ###################################################################################################################################
+def requests_retry_session(retries=3, backoff_factor=0.3, status_forcelist=(500, 502, 504), session=None):
+    session = session or requests.Session()
+    retry = Retry(
+        total=retries,
+        read=retries,
+        connect=retries,
+        backoff_factor=backoff_factor,
+        status_forcelist=status_forcelist,
+    )
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount('http://', adapter)
+    session.mount('https://', adapter)
+    return session
+
+# CLASSES ###################################################################################################################################
 
 class AddressResearcher:
-    def __init__(self):
+    def __init__(self, address):
         self.logger = logging.getLogger(self.__class__.__name__)
-        # self.logger.addFilter(CallDepthFilter())
-        self.logger.info("Initializing AddressResearcher __init__ method within the AddressResearcher class...")
+        self.session = requests_retry_session()
+        self.address = address
+        self.logger.info(f"Initializing AddressResearcher __init__ method within the AddressResearcher class for the address: {self.address}")
         self.google_api_key = os.getenv('GOOGLE_MAPS_API_KEY')
         self.open_weather_api_key = os.getenv('OPEN_WEATHER_API_KEY')
         self.geocode_url = "https://maps.googleapis.com/maps/api/geocode/json"
@@ -150,19 +208,15 @@ class AddressResearcher:
         self.place_text_search_url = "https://maps.googleapis.com/maps/api/place/textsearch/json"
         self.place_nearby_search_url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
         self.place_details_url = "https://maps.googleapis.com/maps/api/place/details/json"
-        # self.new_place_details_url = "https://places.googleapis.com/v1/places/{PLACE_ID}"
-        # self.data = {}
         self.data = self.load_cached_data()
         self.types_to_allow_in_search = {'restaurant': ['restaurant'],}
-        self.location, self.address_components, self.country, self.state, self.county, self.city, self.neighborhood, self.postal_code, self.street_name, self.street_number = self.geocode_address(address)
+        self.location, self.address_components, self.country, self.state, self.county, self.city, self.neighborhood, self.postal_code, self.street_name, self.street_number = self.geocode_address(self.address)
         self.text_search_phrase_templates = self.create_text_search_phrase_templates()
-        # self.search_distances_in_meters = [200, 400, 600, 800, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 6000, 7000, 8000, 9000, 10000, 12500, 15000, 17500, 20000, 22500, 25000]
-        self.search_distances_in_meters = [500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 7500, 10000, 15000, 20000, 25000, 30000]
+        self.search_distances_in_meters = [500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 10000, 15000, 20000, 25000, 30000, 35000]
         self.all_place_ids = set()
 
-    # @track_call_depth
     def load_cached_data(self):
-        self.logger.info(f"{self.load_cached_data.__name__} - Loading cached data for address {address}")
+        self.logger.info(f"{self.load_cached_data.__name__} - Loading cached data for address {self.address}")
         json_file_path = self.get_json_file_path()
         if os.path.exists(json_file_path):
             with open(json_file_path, 'r') as file:
@@ -171,19 +225,16 @@ class AddressResearcher:
                 return cached_data
         return {}
 
-    # @track_call_depth
     def get_json_file_path(self):
         self.logger.info(f"{self.get_json_file_path.__name__} - Getting JSON file path")
         formatted_address = self.format_address_for_filename()
         self.logger.info(f"{self.get_json_file_path.__name__} - JSON file path: {os.path.join(FILE_DROP_PATH, f'restaurant_data_{formatted_address}.json')}")
         return os.path.join(FILE_DROP_PATH, f'restaurant_data_{formatted_address}.json')
 
-    # @track_call_depth
     def format_address_for_filename(self):
         self.logger.info(f"{self.format_address_for_filename.__name__} - Formatting address for filename")
-        return address.replace(',', '').replace(' ', '_')
+        return self.address.replace(',', '').replace(' ', '_')
 
-    # @track_call_depth
     def geocode_address(self, address):
         self.logger.info(f"{self.geocode_address.__name__} - Geocoding address: {address}")
         '''renders the latitude / longitude and also the parsed address components for use in the text search api search phrase templates. 
@@ -202,7 +253,8 @@ class AddressResearcher:
                     {'long_name': '3301', 'short_name': '3301', 'types': ['postal_code_suffix']}]
         '''
         params = {'address': address, 'key': self.google_api_key}
-        response = requests.get(self.geocode_url, params=params)
+        # response = requests.get(self.geocode_url, params=params)
+        response = self.session.get(self.geocode_url, params=params)
         if response.status_code != 200:
             print(f"Geocode API request failed with status code: {response.status_code}")
             return None, None
@@ -246,32 +298,29 @@ class AddressResearcher:
 
         return location, address_components, country, state, county, city, neighborhood, postal_code, street_name, street_number
 
-    # @track_call_depth
     def create_text_search_phrase_templates(self):
-        self.logger.info(f"{self.create_text_search_phrase_templates.__name__} - Creating text search phrase templates for address {address}")
+        self.logger.info(f"{self.create_text_search_phrase_templates.__name__} - Creating text search phrase templates for address {self.address}")
         base_phrases = [
             'best restaurants near {}',
             'top rated restaurants near {}',
             'michelin star restaurants near {}',
-            'american fine dining near {}',
-            'fine dining restaurants near {}',
-            # 'luxury restaurants near {}',
+            'american fine dining restaurants near {}',
+            'luxury restaurants near {}',
             'award winning restaurants near {}',
             'most popular restaurants near {}',
-            # 'most expensive restaurants near {}',
-            # 'most exclusive restaurants near {}',
-            # 'new american fine dining near {}',
+            'most expensive restaurants near {}',
+            'most exclusive restaurants near {}',
             'elevated dining experiences near {}',
             'james beard award winning restaurants near {}',
             'zagat top restaurants near {}',
             'most famous restaurants near {}',
-            # 'best places to eat near {}',
-            # 'best celebration restaurants near {}',
+            'best places to eat near {}',
+            'best celebration restaurants near {}',
         ]
 
         phrases = []
         for phrase in base_phrases:
-            phrases.append(phrase.format(address))  # Applying to address
+            phrases.append(phrase.format(self.address))  # Applying to address
             if self.street_name and self.city:
                 phrases.append(phrase.format(f"{self.street_name}, {self.neighborhood}, {self.city}"))  # Applying to street name + neighborhood + city
             if self.neighborhood and self.city:
@@ -291,8 +340,12 @@ class AddressResearcher:
     def create_location_restriction_paramater_for_google_text_search_based_on_address(self, address):
         # set the location restriction parameter for the google text search based on the city in the provided address
         pass
-        
-    # @track_call_depth
+    
+    # notice how the text search and the search nearby functions both only gather the place id and add it to the set. 
+    # i want to gather all free/cheap fields for each result from the text search and search nearby api calls before attempting to call the palce details api. 
+    # from there i want to append all that captured data from the text search and search nearby functions to the self.data variable at this step. 
+    # we want to get everything we can before making the request to the place details api. 
+    # then, for the place details api, i only want to request fields that are not already present in the data. this will require dynamic list creation for the fields parameter in the place details api call.
     def query_google_text_search(self, phrase):
         self.logger.info(f"{self.query_google_text_search.__name__} - Querying Google Text Search with phrase: {phrase}")
         print(f"Querying phrase: {phrase}")
@@ -307,7 +360,8 @@ class AddressResearcher:
                 'pagetoken': next_page_token  # This will be None for the first request
             }
             print(f'Query & pagetoken: {phrase}, {next_page_token}')
-            response = requests.get(self.place_text_search_url, params=params)
+            # response = requests.get(self.place_text_search_url, params=params)
+            response = self.session.get(self.place_text_search_url, params=params)
             print(f"Response status code: {response.status_code}")
 
             if response.status_code == 200:
@@ -338,7 +392,6 @@ class AddressResearcher:
         self.logger.info(f"{self.query_google_text_search.__name__} - {number_of_results} results were found for the phrase: {phrase}")
         return all_places
 
-    # @track_call_depth
     def query_google_nearby_search(self, distance):
         self.logger.info(f"{self.query_google_nearby_search.__name__} - Starting nearby search with radius {distance} meters")
         print(f"Starting nearby search with radius {distance} meters")
@@ -354,7 +407,8 @@ class AddressResearcher:
                 'pagetoken': next_page_token  # This will be None for the first request
             }
 
-            response = requests.get(self.place_nearby_search_url, params=params)
+            # response = requests.get(self.place_nearby_search_url, params=params)
+            response = self.session.get(self.place_nearby_search_url, params=params)
             if response.status_code == 200:
                 search_data = response.json()
 
@@ -381,8 +435,9 @@ class AddressResearcher:
         self.logger.info(f"{self.query_google_nearby_search.__name__} - {number_of_results} results were found for the nearby search with radius {distance} meters")
         return all_places
     
-    # @track_call_depth
     def get_place_details(self, place_id):
+        # to optimize the place details api call, we only want to request fields that are not already present in the data. this will require a dynamic list creation for the fields parameter in the place details api call.
+        fields_to_search = 'place_id,name,editorial_summary,website,url,types,rating,price_level,opening_hours,utc_offset,review,user_ratings_total,formatted_phone_number,international_phone_number,formatted_address,address_components,geometry,plus_code,business_status,reservable,dine_in,wheelchair_accessible_entrance,serves_breakfast,serves_brunch,serves_dinner,serves_lunch,serves_wine,serves_beer,serves_vegetarian_food'
         # Check if data exists and is fresh
         self.logger.info(f"{self.get_place_details.__name__} - Checking if data for place ID {place_id} is present")
         if place_id in self.data:
@@ -406,10 +461,11 @@ class AddressResearcher:
         params = {
             'place_id': place_id,
             'key': self.google_api_key,
-            'fields': 'place_id,name,editorial_summary,website,url,icon,types,rating,price_level,opening_hours,utc_offset,review,user_ratings_total,formatted_phone_number,international_phone_number,formatted_address,address_components,geometry,plus_code,business_status,reservable,dine_in,wheelchair_accessible_entrance,serves_breakfast,serves_brunch,serves_dinner,serves_lunch,serves_wine,serves_beer,serves_vegetarian_food',
+            'fields': fields_to_search,
         }
         time.sleep(1)  # Add a small delay before each call within this program's loop to avoid rate limiting
-        response = requests.get(url, params=params).json()
+        # response = requests.get(url, params=params).json()
+        response = self.session.get(url, params=params).json()
         print(f"Place details response status: {response.get('status')}")
 
         if response.get('status') == 'OK':
@@ -424,7 +480,6 @@ class AddressResearcher:
             self.logger.info(f"{self.get_place_details.__name__} - Error querying Place Details: {response.get('status')}")
             return {}
 
-    # @track_call_depth
     def haversine_distance(self, coord1, coord2):
         lat1, lon1 = coord1
         lat2, lon2 = coord2
@@ -439,11 +494,9 @@ class AddressResearcher:
         c = 2 * asin(sqrt(a))
         r = 6371  # Radius of Earth in kilometers
         distance = c * r
-        print(f"Distance: {distance} km")
-        self.logger.info(f"{self.haversine_distance.__name__} - Haversine distance between {coord1} and {coord2}: {distance} km")
-        return distance
+        # return distance
+        return round(distance, 2)
 
-    # @track_call_depth
     def add_crow_fly_distances(self):
         self.logger.info(f"{self.add_crow_fly_distances.__name__} - Adding crow fly distances...")
         print("Adding crow fly distances...")
@@ -454,18 +507,16 @@ class AddressResearcher:
                 distance = self.haversine_distance(origin, destination)
                 self.data[place_id]['crow_fly_distance_km'] = distance
                 print(f"Added crow fly distance for {place_id}: {distance} km between {origin} and {destination}")
-                self.logger.info(f"{self.add_crow_fly_distances.__name__} - Added crow fly distance for {place_id}: {distance} km")
+                self.logger.info(f"{self.add_crow_fly_distances.__name__} - Added crow fly distance for {place_id}: {distance} km between {origin} and {destination}")
             else:
                 print(f"Skipping {place_id}, missing geometry data")
-                self.logger.info(f"{self.add_crow_fly_distances.__name__} - Skipping {place_id}, missing geometry data")
+        self.logger.info(f"{self.add_crow_fly_distances.__name__} - Crow fly distances added for {len(self.all_place_ids)} places")
 
-    # @track_call_depth
     def format_weekday_text(self, opening_hours):
         '''not working'''
         # Extract 'weekday_text' and join with newline characters if it exists
         return '\n'.join(opening_hours['weekday_text']) if 'weekday_text' in opening_hours else 'N/A'
 
-    # @track_call_depth
     def format_reviews(self, reviews):
         formatted_reviews = []
         for review in sorted(reviews, key=lambda x: x.get('time', 0), reverse=True)[:5]:  # Sorting by time and getting top 5
@@ -476,20 +527,18 @@ class AddressResearcher:
             formatted_reviews.append(review_text)
         return '\n\n'.join(formatted_reviews) if formatted_reviews else 'N/A'
 
-    # @track_call_depth
     def save_report_as_csv(self, data, csv_file_path):
         '''opening_hours not being formatted correctly in the csv file'''
         self.logger.info(f"{self.save_report_as_csv.__name__} - Saving report as CSV file at {csv_file_path}")
         columns_order = ['place_id', 
                         'name', 
+                        'rating', 
+                        'user_ratings_total', 
+                        'price_level', 
                         'types', 
                         'editorial_summary', 
                         'website', 
                         'url', 
-                        'icon',
-                        'rating', 
-                        'user_ratings_total', 
-                        'price_level', 
                         'opening_hours', 
                         'review', 
                         'crow_fly_distance_km', 
@@ -535,11 +584,10 @@ class AddressResearcher:
         df.to_csv(csv_file_path, index=False, encoding='utf-8-sig')
         self.logger.info(f"{self.save_report_as_csv.__name__} - Report saved as CSV file at {csv_file_path}")
 
-    # @track_call_depth
     def run_searches_and_save(self):
         self.logger.info(f"{self.run_searches_and_save.__name__} - Starting search and save process")
         print("Starting search and save process")
-        formatted_address = address.replace(',', '').replace(' ', '_')
+        formatted_address = self.address.replace(',', '').replace(' ', '_')
         json_file_path = os.path.join(FILE_DROP_PATH, f'restaurant_data_{formatted_address}.json')
         csv_file_path = os.path.join(FILE_DROP_PATH, f'restaurant_data_{formatted_address}.csv')
         self.logger.info(f"{self.run_searches_and_save.__name__} - JSON file path: {json_file_path}, CSV file path: {csv_file_path}")
@@ -572,15 +620,12 @@ class AddressResearcher:
         print(f"Data saved to CSV file at {csv_file_path}")
         self.logger.info(f"{self.run_searches_and_save.__name__} - Data saved to CSV file at {csv_file_path}")
 
-# initialize the AddressResearcher class
-logging.info(f"Initializing AddressResearcher class")
-address_researcher = AddressResearcher()
-logging.info(f"AddressResearcher class initialized")
-# run the searches and save the data
-address_researcher.run_searches_and_save()
-logging.info(f"Searches completed and data saved")
-
-        
+# Main execution
+if __name__ == "__main__":
+    for address in addresses_list:
+        logging.info(f"Processing address: {address}")
+        address_researcher = AddressResearcher(address)
+        address_researcher.run_searches_and_save()   
         
         
         
