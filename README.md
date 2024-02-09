@@ -1,6 +1,6 @@
-### Initial Setup
+# Initial Setup
 
-# terminal commands to create a virtual environment, git repo, github repo, and install dependencies
+#@ terminal commands to create a virtual environment, git repo, github repo, and install dependencies
 python3.11 -m venv {"your venv name here"}
 source {"your venv name here"}/bin/activate
 deactivate
@@ -14,22 +14,22 @@ source {"your venv name here"}/bin/activate
 pip install --upgrade pip certifi
 pip install beautifulsoup4 selenium python-dotenv requests webdriver-manager pandas fake_useragent tqdm Pyarrow simplekml pyopenssl ndg-httpsclient pyasn1 google-generativeai google-api-python-client howdoi wikipedia ipython jupyter
 
-# download the correct version of the google chrome driver from this link, unzip it, and place it in your project directory:
+## download the correct version of the google chrome driver from this link, unzip it, and place it in your project directory:
 https://googlechromelabs.github.io/chrome-for-testing/#stable
 
-# module description: 
+## module description: 
 a search automation tool designed to gather all available public data about restaurants within proximity of a given address. 
 
-# module functional summary: 
+## module functional summary: 
 This module is a web scraping research agent that uses the Google Maps API to find nearby restaurants based on a provided address and then scrapes their websites for menu links. The data is then saved to a JSON file and a CSV file. 
 
-# Data sources:
+## Data sources:
 Google Maps (geocode API + text search API + search nearby API + place details API + distance matrix API)
 OpenWeather (historical weather data API)
 Wikipedia (demographic and economic data)
 Census (demographic data)
 
-# Execution:
+## Execution:
 input: Address string 
 (working) the class is initialized and the data is loaded from the json file if it exists.
 (working) the file paths for the json and csv files are constructed based on the source address string and the file drop path environment variable.
@@ -43,7 +43,7 @@ input: Address string
 (working) output_1: the updated self.data dictionary is saved to the json file and the csv file.
 (not yet implemented) for all results that returned a valid website, the SpiderCrawlerMenuScraper class will visit each website and navigate itself to the menu page and gather the menu links. the menu links are then added to the self.data dictionary and the updated self.data dictionary is saved to the json file and the csv file.
 
-# module planned updates (roadmap):
+## module planned updates (roadmap):
 ACTIVE NOW IN THIS SPRINT: add a new class called SpiderCrawlerMenuScraper that crawls the websites of the restaurants found in the AddressResearcher and gathers the menu links and saves them. the menu links are then added to the self.data dictionary and the updated self.data dictionary is saved to the json file and the csv file.
 QUEUE: scrape and parse the menu data (the body text of the menu page or the menu pdf) and save it to the json file and the csv file after normalizing it.
 QUEUE: add menu price summary statistics to each object containing averages of the menu data pricing in a standard format such as: "average appetizer price, average salad price, average entree price, average side price, average dessert price, average cocktail price, average wine glass price, average beer price," etc.
