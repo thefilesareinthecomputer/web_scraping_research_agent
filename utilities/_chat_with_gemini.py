@@ -36,42 +36,42 @@ print(primer_response)
 exit_words = ['exit', 'quit', 'stop', 'end', 'bye', 'goodbye', 'done', 'break']
     
 while True:
-        user_input = input('User: ')
-        if not user_input:
-            continue
+    user_input = input('User: ')
+    if not user_input:
+        continue
 
-        query = user_input.lower().split()
-        if not query:
-            continue
+    query = user_input.lower().split()
+    if not query:
+        continue
 
-        if query[0] in exit_words:
-            print('Ending chat.')
-            break
+    if query[0] in exit_words:
+        print('Ending chat.')
+        break
 
-        else:
-            response = chat.send_message(f'{user_input}', stream=True)
-            if response:
-                for chunk in response:
-                    if hasattr(chunk, 'parts'):
-                        # Concatenate the text from each part
-                        full_text = ''.join(part.text for part in chunk.parts)
-                        print(full_text)
-                    else:
-                        # If it's a simple response, just speak and print the text
-                        print(chunk.text)
-            if not response:
-                attempt_count = 1  # Initialize re-try attempt count
-                while attempt_count < 5:
-                    response = chat.send_message(f'{user_input}', stream=True)
-                    attempt_count += 1  # Increment attempt count
-                    if response:
-                        for chunk in response:
-                            if hasattr(chunk, 'parts'):
-                                # Concatenate the text from each part
-                                full_text = ''.join(part.text for part in chunk.parts)
-                                print(full_text)
-                            else:
-                                # If it's a simple response, just speak and print the text
-                                print(chunk.text)
-                    else:
-                        print('Chat failed.')
+    else:
+        response = chat.send_message(f'{user_input}', stream=True)
+        if response:
+            for chunk in response:
+                if hasattr(chunk, 'parts'):
+                    # Concatenate the text from each part
+                    full_text = ''.join(part.text for part in chunk.parts)
+                    print(full_text)
+                else:
+                    # If it's a simple response, just speak and print the text
+                    print(chunk.text)
+        if not response:
+            attempt_count = 1  # Initialize re-try attempt count
+            while attempt_count < 5:
+                response = chat.send_message(f'{user_input}', stream=True)
+                attempt_count += 1  # Increment attempt count
+                if response:
+                    for chunk in response:
+                        if hasattr(chunk, 'parts'):
+                            # Concatenate the text from each part
+                            full_text = ''.join(part.text for part in chunk.parts)
+                            print(full_text)
+                        else:
+                            # If it's a simple response, just speak and print the text
+                            print(chunk.text)
+                else:
+                    print('Chat failed.')
