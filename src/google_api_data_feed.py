@@ -1,14 +1,23 @@
 '''
 
-# module description: 
-a search automation tool designed to gather all available public data about restaurants within proximity of a given address. 
-a data aggregation and summarization engine to inform business decision making.
+# APP
 
-# module functional summary: 
-This module is a web scraping research agent that uses the Google Maps API to find nearby restaurants based on a provided address and then scrapes their websites for menu links. The data is then saved to a JSON file and a CSV file. 
+There is new code around line 550 - monitor that on the next run
 
-# Data sources:
-CURRENTLY IN USE: Google Maps (geocode API + text search API + search nearby API + place details API + distance matrix API)
+```
+## App description: 
+
+a search automation, analysis, and visualization tool designed to create a comprehensive report about all relevant restaurant, business, economic, and weather data about a 
+predefined set of addresses. 
+the application pulls in data from nultiple sources, aggregates and normalizes it, converts it to files that can be used for visualizations, and then stages them for use 
+in a Python / plotly / dash interactive dashboard web application to visualize and interact with the data.
+
+## App data sources:
+
+DATA CURRENTLY IN USE: 
+Google Maps (geocode API + text search API + search nearby API + place details API + distance matrix API)
+
+DATA TO BE ADDED / IMPLEMENTED: 
 OpenWeather (historical weather data API)
 Wikipedia (demographic and economic data)
 Census (demographic data)
@@ -28,8 +37,18 @@ https://guide.michelin.com/en
 https://www.kayak.com/
 https://foursquare.com/
 https://data.gov/
+```
 
-# Execution:
+# THIS MODULE 
+
+```
+## Module functional summary: 
+
+This module is the first step in the data pipeline. It pulls all of the initial data from the Google Maps API and saves it to a JSON file and a CSV file. 
+This module is a restaurant dataset engine that uses the Google Maps API to find restaurants that meet certain search criteria based on a provided list of addresses and then scrapes the web for data about each restaurant's menu and other relevant data and news. The data is then saved to a JSON file and a CSV file for use in the next stage of the data pipeline. 
+
+## Module execution:
+
 input: Address string 
 (working) the class is initialized and the data is loaded from the json file if it exists.
 (working) the file paths for the json and csv files are constructed based on the source address string and the file drop path environment variable.
@@ -44,9 +63,10 @@ input: Address string
 (not yet implemented) for all results that returned a valid website, the SpiderCrawlerMenuScraper class will visit each website and navigate itself to the menu page and gather the menu links. the menu links are then added to the self.data dictionary and the updated self.data dictionary is saved to the json file and the csv file.
 (not yet implemented) the menu data is parsed and saved to the json file and the csv file after normalizing it. the menu data can also be augmented / stitched / aggregated if it is found in other data sources such as the restaurant booking sites, the restaurant review / award / blog sites, or the social media sites.
 
-# module planned updates (roadmap):
-QUEUE: add some type of knowledge context and semantic parameters into the system so that the web scraping spider crawler bots can have a better sense of what they are looking for and what they are looking at and when their tasks are complete and which actions to take in any situation. 
+## Module planned updates (roadmap):
+
 QUEUE: add a new class called SpiderCrawlerMenuScraper that crawls the websites of the restaurants found in the AddressResearcher and gathers the menu links and saves them. the menu links are then added to the self.data dictionary and the updated self.data dictionary is saved to the json file and the csv file.
+QUEUE: add some type of knowledge context and semantic parameters into the system so that the web scraping spider crawler bots can have a better sense of what they are looking for and what they are looking at and when their tasks are complete and which actions to take in any situation. 
 QUEUE: scrape and parse the menu data (the body text of the menu page or the menu pdf) and save it to the json file and the csv file after normalizing it.
 QUEUE: add menu price summary statistics to each object containing averages of the menu data pricing in a standard format such as: "average appetizer price, average salad price, average entree price, average side price, average dessert price, average cocktail price, average wine glass price, average beer price," etc.
 QUEUE: scrape additional data points for each business such as: michelin stars, articke links, yelp links, tripadvisor links, social media, overall sentiment, etc. 
@@ -56,6 +76,12 @@ QUEUE: label the baseline dataset with classification labels for the type of cui
 QUEUE: use feature discovery to determine which features are most important for the classification model, and then train a classification model to predict the labels for future results.
 QUEUE: once base classifications are determined, then classify all entities as "relevant" or "non-relevant" to our needs, begin keeping record of business names / types that are not relevant, and then modify the code to filter out those non-relevant records before calling the google place details api to avoid unnecessary api calls and charges.
 
+
+## NEXT STEP AFTER THIS MODULE
+
+After this module, the data is normalized and then saved to consolidated and formatted files for use in the Plotly / Dash interactive dashboard web application.
+After that, the data is loaded into the Plotly / Dash interactive dashboard web application and visualized and interacted with by the user. 
+```
 
 '''
 # IMPORTS ###################################################################################################################################
@@ -68,6 +94,7 @@ from functools import wraps
 from math import radians, cos, sin, asin, sqrt
 from pandas import json_normalize
 from requests.adapters import HTTPAdapter
+from requests.exceptions import RequestException, ChunkedEncodingError, HTTPError, Timeout
 from urllib3.util.retry import Retry
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -81,6 +108,7 @@ from urllib.parse import urlparse, urljoin
 import asyncio
 import certifi
 import difflib
+import functools
 import json
 import logging
 import math
@@ -102,15 +130,16 @@ import webbrowser
 
 # Load environment variables
 load_dotenv()
-
-data_source_urls = os.getenv('URLS')
-# gather all 10 of the base URLs to be indexed and scraped
-urls = [os.getenv(f'URL_{i}') for i in range(1, 11) if os.getenv(f'URL_{i}') is not None]
-
+ROOT = os.getenv('ROOT')
+FILE_DROP_PATH = os.getenv('FILE_DROP_PATH')
+if not os.path.exists(FILE_DROP_PATH):
+    os.makedirs(FILE_DROP_PATH)
+    
 script_directory = os.path.dirname(os.path.abspath(__file__))
+
 with open(f'{script_directory}/address_secrets.json', 'r') as file:
     restaurant_address_dictionary = json.load(file)
-
+    
 # extract the values from each key and add them to a list of values as strings
 restaurant_addresses = {key: str(value) for key, value in restaurant_address_dictionary.items()}
 
@@ -121,11 +150,6 @@ addresses_list = list(restaurant_addresses.values())
 # Configure logging
 logging.basicConfig(filename='address_researcher.log', level=logging.INFO,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-# establish the path for saving data and make it if it doesn't exist
-FILE_DROP_PATH = os.getenv('FILE_DROP_PATH')
-if not os.path.exists(FILE_DROP_PATH):
-    os.makedirs(FILE_DROP_PATH)
 
 def create_ssl_context():
     return ssl.create_default_context(cafile=certifi.where())
@@ -162,6 +186,68 @@ def requests_retry_session(retries=3, backoff_factor=0.3, status_forcelist=(500,
     session.mount('https://', adapter)
     return session
 
+# # Adjust the safe_request decorator to include ChunkedEncodingError in the handled_exceptions
+# def safe_request(max_retries=3, backoff_factor=1, handled_exceptions=(ChunkedEncodingError,)):
+#     def decorator(func):
+#         def wrapper(*args, **kwargs):
+#             retries = 0
+#             while retries < max_retries:
+#                 try:
+#                     response = func(*args, **kwargs)
+#                     if response.status_code == 200:
+#                         return response
+#                     else:
+#                         args[0].logger.error(f"HTTP Error: {response.status_code} for {func.__name__}")
+#                 except handled_exceptions as e:
+#                     args[0].logger.error(f"Request failed due to {e.__class__.__name__}: {e}, retrying...")
+#                     time.sleep(backoff_factor * (2 ** retries))
+#                     retries += 1
+#                 except Exception as e:
+#                     args[0].logger.error(f"Unhandled exception in {func.__name__}: {e}")
+#                     break
+
+#             # After all retries have been exhausted, log and return None
+#             args[0].logger.error(f"All retries exhausted for {func.__name__}. Skipping to next.")
+#             return None
+#         return wrapper
+#     return decorator
+
+# This includes common requests exceptions and any specific exceptions you've encountered or expect from the Google APIs
+GLOBAL_HANDLED_EXCEPTIONS = (
+    RequestException,  # Base class for all requests exceptions
+    HTTPError,  # HTTP error occurred
+    ConnectionError,  # Problems with the network connection
+    Timeout,  # Request timed out
+    ChunkedEncodingError,  # Incomplete read error
+    # Add any other specific exceptions you want to handle globally
+)
+
+def safe_request(max_retries=3, backoff_factor=1):
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            retries = 0
+            while retries < max_retries:
+                try:
+                    response = func(*args, **kwargs)
+                    if response.status_code == 200:
+                        return response
+                    else:
+                        args[0].logger.error(f"HTTP Error: {response.status_code} for {func.__name__}")
+                except GLOBAL_HANDLED_EXCEPTIONS as e:
+                    args[0].logger.error(f"Request failed due to {e.__class__.__name__}: {e}, retrying...")
+                    time.sleep(backoff_factor * (2 ** retries))
+                    retries += 1
+                except Exception as e:
+                    args[0].logger.error(f"Unhandled exception in {func.__name__}: {e}")
+                    break
+
+            # After all retries have been exhausted, log and return None
+            args[0].logger.error(f"All retries exhausted for {func.__name__}. Skipping to next.")
+            return None
+        return wrapper
+    return decorator
+
 # CLASSES ###################################################################################################################################
 
 class AddressResearcher:
@@ -181,8 +267,9 @@ class AddressResearcher:
         self.types_to_allow_in_search = {'restaurant': ['restaurant'],}
         self.location, self.address_components, self.country, self.state, self.county, self.city, self.neighborhood, self.postal_code, self.street_name, self.street_number = self.geocode_address(self.address)
         self.text_search_phrase_templates = self.create_text_search_phrase_templates()
-        self.search_distances_in_meters = [500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 10000, 15000, 20000, 25000, 30000, 35000]
+        self.search_distances_in_meters = [500, 750, 1000, 1250, 1500, 1750, 2000, 2250, 2500, 2750, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000, 12500, 15000, 17500, 20000, 25000, 30000, 35000]
         self.all_place_ids = set()
+        self.data_shelf_life = 30  # Days
 
     def load_cached_data(self):
         self.logger.info(f"{self.load_cached_data.__name__} - Loading cached data for address {self.address}")
@@ -270,51 +357,52 @@ class AddressResearcher:
     def create_text_search_phrase_templates(self):
         self.logger.info(f"{self.create_text_search_phrase_templates.__name__} - Creating text search phrase templates for address {self.address}")
         base_phrases = [
-            'best restaurants near {}',
-            'top rated restaurants near {}',
-            'michelin star restaurants near {}',
-            'american fine dining restaurants near {}',
-            'luxury restaurants near {}',
-            'award winning restaurants near {}',
-            'most popular restaurants near {}',
-            'most expensive restaurants near {}',
-            'most exclusive restaurants near {}',
-            'elevated dining experiences near {}',
-            'james beard award winning restaurants near {}',
-            'zagat top restaurants near {}',
-            'most famous restaurants near {}',
-            'best places to eat near {}',
-            'best celebration restaurants near {}',
+            'best restaurants {}',
+            'top rated restaurants {}',
+            'michelin star restaurants {}',
+            'american fine dining restaurants {}',
+            'luxury restaurants {}',
+            'award winning restaurants {}',
+            'most popular restaurants {}',
+            'most expensive restaurants {}',
+            'most exclusive restaurants {}',
+            'elevated dining experiences {}',
+            'james beard award winning restaurants {}',
+            'zagat guide top restaurants {}',
+            'most famous restaurants {}',
+            'best places to eat {}',
+            'best celebration restaurants {}',
+            'hottest restaurants {}',
+            'best new restaurants {}',
+            'best restaurants for a date {}',
         ]
 
         phrases = []
         for phrase in base_phrases:
-            phrases.append(phrase.format(self.address))  # Applying to address
+            phrases.append(phrase.format(f"near {self.address}"))  # Applying to address
             if self.street_name and self.city:
-                phrases.append(phrase.format(f"{self.street_name}, {self.neighborhood}, {self.city}"))  # Applying to street name + neighborhood + city
+                phrases.append(phrase.format(f"on {self.street_name}, in {self.neighborhood}, {self.city}"))  # Applying to street name + neighborhood + city
             if self.neighborhood and self.city:
-                phrases.append(phrase.format(f"{self.neighborhood}, {self.city}, {self.state}"))  # Applying to neighborhood + city + state
+                phrases.append(phrase.format(f"in {self.neighborhood}, {self.city}, {self.state}"))  # Applying to neighborhood + city + state
             if self.postal_code and self.state and self.country:
-                phrases.append(phrase.format(f"{self.postal_code}, {self.city}, {self.state}"))  # Applying to postal code + city + state
+                phrases.append(phrase.format(f"in {self.postal_code}, {self.city}, {self.state}"))  # Applying to postal code + city + state
             if self.county and self.state:
-                phrases.append(phrase.format(f"{self.county}, {self.city}, {self.state}"))  # Applying to county + city + state
+                phrases.append(phrase.format(f"in {self.county}, {self.city}, {self.state}"))  # Applying to county + city + state
             if self.city and self.state:
-                phrases.append(phrase.format(f"{self.city}, {self.state}"))  # Applying to city + state
+                phrases.append(phrase.format(f"in {self.city}, {self.state}"))  # Applying to city + state
 
         template_count = len(phrases)  # Count the number of templates generated
         print(f"Text search phrase templates: {phrases}")
         self.logger.info(f"{self.create_text_search_phrase_templates.__name__} - {template_count} text search phrase templates were created.")
         return phrases
     
-    def create_location_restriction_paramater_for_google_text_search_based_on_address(self, address):
-        # set the location restriction parameter for the google text search based on the city in the provided address
-        pass
-    
-    # notice how the text search and the search nearby functions both only gather the place id and add it to the set. 
-    # i want to gather all free/cheap fields for each result from the text search and search nearby api calls before attempting to call the palce details api. 
-    # from there i want to append all that captured data from the text search and search nearby functions to the self.data variable at this step. 
-    # we want to get everything we can before making the request to the place details api. 
-    # then, for the place details api, i only want to request fields that are not already present in the data. this will require dynamic list creation for the fields parameter in the place details api call.
+    # def create_location_restriction_paramater_for_google_text_search_based_on_address(self, address):
+    #     # set the location restriction parameter for the google text search based on the city in the provided address
+    #     pass
+
+    # query the google text search api with each of the search phrase templates
+    # @safe_request(max_retries=3, backoff_factor=1, handled_exceptions=(ChunkedEncodingError,))
+    @safe_request()
     def query_google_text_search(self, phrase):
         self.logger.info(f"{self.query_google_text_search.__name__} - Querying Google Text Search with phrase: {phrase}")
         print(f"Querying phrase: {phrase}")
@@ -361,6 +449,9 @@ class AddressResearcher:
         self.logger.info(f"{self.query_google_text_search.__name__} - {number_of_results} results were found for the phrase: {phrase}")
         return all_places
 
+    # query the google nearby search api with each of the search distances
+    # @safe_request(max_retries=3, backoff_factor=1, handled_exceptions=(ChunkedEncodingError,))
+    @safe_request()
     def query_google_nearby_search(self, distance):
         self.logger.info(f"{self.query_google_nearby_search.__name__} - Starting nearby search with radius {distance} meters")
         print(f"Starting nearby search with radius {distance} meters")
@@ -404,9 +495,11 @@ class AddressResearcher:
         self.logger.info(f"{self.query_google_nearby_search.__name__} - {number_of_results} results were found for the nearby search with radius {distance} meters")
         return all_places
     
+    # @safe_request(max_retries=3, backoff_factor=1, handled_exceptions=(ChunkedEncodingError,))
+    @safe_request()
     def get_place_details(self, place_id):
         # to optimize the place details api call, we only want to request fields that are not already present in the data. this will require a dynamic list creation for the fields parameter in the place details api call.
-        fields_to_search = 'place_id,name,editorial_summary,website,url,types,rating,price_level,opening_hours,utc_offset,review,user_ratings_total,formatted_phone_number,international_phone_number,formatted_address,address_components,geometry,plus_code,business_status,reservable,dine_in,wheelchair_accessible_entrance,serves_breakfast,serves_brunch,serves_dinner,serves_lunch,serves_wine,serves_beer,serves_vegetarian_food'
+        fields_to_search = 'place_id,name,editorial_summary,website,url,types,rating,price_level,opening_hours,utc_offset,review,user_ratings_total,international_phone_number,formatted_address,address_components,geometry,plus_code,business_status,reservable,dine_in,wheelchair_accessible_entrance,serves_breakfast,serves_brunch,serves_dinner,serves_lunch,serves_wine,serves_beer,serves_vegetarian_food'
         # Check if data exists and is fresh
         self.logger.info(f"{self.get_place_details.__name__} - Checking if data for place ID {place_id} is present")
         if place_id in self.data:
@@ -419,7 +512,8 @@ class AddressResearcher:
                 # If the date string is invalid, default to the Unix epoch start time or altenately could be expressed as datetime.min
                 last_updated = datetime(1970, 1, 1)
                 
-            if datetime.now() - last_updated < timedelta(days=2):
+            if datetime.now() - last_updated < timedelta(days=self.data_shelf_life):  # Only fetch details if data is older than the shelf life
+            # if datetime.now() - last_updated < timedelta(days=14):  # This implementation uses a 14 day threshold for data freshness
                 print(f"Data for {place_id} is fresh. Skipping API call.")
                 self.logger.info(f"{self.get_place_details.__name__} - Data for {place_id} is fresh. Skipping API call.")
                 return None  # Skip fetching details and return None to indicate no new data was fetched
@@ -437,17 +531,50 @@ class AddressResearcher:
         response = self.session.get(url, params=params).json()
         print(f"Place details response status: {response.get('status')}")
 
+        # if response.get('status') == 'OK':
+        #     # return response.get('result', {})
+        #     details = response.get('result', {})
+        #     details['last_updated'] = datetime.now().isoformat()  # Add last updated timestamp
+        #     print(f"\nPlace details fetched for place ID: {place_id}")
+        #     self.logger.info(f"{self.get_place_details.__name__} - Place details fetched for place ID: {place_id}")
+        #     # AT THIS POINT IN THE CODE, WE NEED TO FIND WHICH RESULTS ARE MISSING THE 'geometry' NESTED DICTIONARY AND/OR THE 'location' NESTED DICTIONARY CONTAINING THE 'lat' AND 'lng' FIELDS
+        #     # THEN WE NEED TO GATHER THIS DATA AND ADD IT TO EACH PLACE ID RECORD IN THE JSON FILE UNDER THE 'geometry' NESTED DICTIONARY AND THE 'location' NESTED DICTIONARY CONTAINING THE 'lat' AND 'lng' FIELDS
+        #     # WE WILL GET THIS FROM THE GOOGLE GEOLOCATION API
+        #     return details
+        # else:
+        #     print(f"Error querying Place Details: {response.get('status')}")
+        #     self.logger.info(f"{self.get_place_details.__name__} - Error querying Place Details: {response.get('status')}")
+        #     return {}
+        
+        # NEW UNTESTED VERSION OF THE FUNCTION COMMENTED OUT ABOVE
         if response.get('status') == 'OK':
-            # return response.get('result', {})
             details = response.get('result', {})
             details['last_updated'] = datetime.now().isoformat()  # Add last updated timestamp
             print(f"\nPlace details fetched for place ID: {place_id}")
             self.logger.info(f"{self.get_place_details.__name__} - Place details fetched for place ID: {place_id}")
+
+            # Check if 'geometry' or 'location' data is missing
+            if 'geometry' not in details or 'location' not in details['geometry']:
+                # Use the self.location attribute to fill in the missing geometry data
+                # Ensure self.location is up-to-date by calling self.geocode_address if needed
+                if not self.location:
+                    self.location, _, _, _, _, _, _, _, _, _ = self.geocode_address(details.get('formatted_address', ''))
+                
+                # Check again after attempting to update self.location
+                if self.location:
+                    details['geometry'] = {'location': self.location}
+                    print(f"Updated geometry data for place ID: {place_id} with self.location")
+                    self.logger.info(f"{self.get_place_details.__name__} - Updated geometry data for place ID: {place_id} with self.location")
+                else:
+                    print(f"Failed to update geometry data for place ID: {place_id}.")
+                    self.logger.error(f"{self.get_place_details.__name__} - Failed to update geometry data for place ID: {place_id}.")
+
             return details
         else:
             print(f"Error querying Place Details: {response.get('status')}")
             self.logger.info(f"{self.get_place_details.__name__} - Error querying Place Details: {response.get('status')}")
             return {}
+
 
     def haversine_distance(self, coord1, coord2):
         lat1, lon1 = coord1
@@ -466,6 +593,22 @@ class AddressResearcher:
         # return distance
         return round(distance, 2)
 
+    # def add_crow_fly_distances(self):
+    #     self.logger.info(f"{self.add_crow_fly_distances.__name__} - Adding crow fly distances...")
+    #     print("Adding crow fly distances...")
+    #     for place_id in self.all_place_ids:
+    #         if place_id in self.data and 'geometry' in self.data[place_id]:
+    #             origin = (self.location['lat'], self.location['lng'])
+    #             destination = (self.data[place_id]['geometry']['location']['lat'], self.data[place_id]['geometry']['location']['lng'])
+    #             distance = self.haversine_distance(origin, destination)
+    #             self.data[place_id]['crow_fly_distance_km'] = distance
+    #             print(f"Added crow fly distance for {place_id}: {distance} km between {origin} and {destination}")
+    #             self.logger.info(f"{self.add_crow_fly_distances.__name__} - Added crow fly distance for {place_id}: {distance} km between {origin} and {destination}")
+    #         else:
+    #             print(f"Skipping {place_id}, missing geometry data")
+    #     self.logger.info(f"{self.add_crow_fly_distances.__name__} - Crow fly distances added for {len(self.all_place_ids)} places")
+
+    # this updated version checks if the crow fly distance already exists and ensures the new distance is not greater than the old value
     def add_crow_fly_distances(self):
         self.logger.info(f"{self.add_crow_fly_distances.__name__} - Adding crow fly distances...")
         print("Adding crow fly distances...")
@@ -474,12 +617,16 @@ class AddressResearcher:
                 origin = (self.location['lat'], self.location['lng'])
                 destination = (self.data[place_id]['geometry']['location']['lat'], self.data[place_id]['geometry']['location']['lng'])
                 distance = self.haversine_distance(origin, destination)
-                self.data[place_id]['crow_fly_distance_km'] = distance
-                print(f"Added crow fly distance for {place_id}: {distance} km between {origin} and {destination}")
-                self.logger.info(f"{self.add_crow_fly_distances.__name__} - Added crow fly distance for {place_id}: {distance} km between {origin} and {destination}")
+                # Check if crow_fly_distance_km already exists and if new distance is not greater than the old value
+                if 'crow_fly_distance_km' not in self.data[place_id] or distance < self.data[place_id]['crow_fly_distance_km']:
+                    self.data[place_id]['crow_fly_distance_km'] = distance
+                    print(f"Added/Updated crow fly distance for {place_id}: {distance} km between {origin} and {destination}")
+                    self.logger.info(f"{self.add_crow_fly_distances.__name__} - Added/Updated crow fly distance for {place_id}: {distance} km between {origin} and {destination}")
+                else:
+                    print(f"Retained existing crow fly distance for {place_id}: {self.data[place_id]['crow_fly_distance_km']} km")
             else:
                 print(f"Skipping {place_id}, missing geometry data")
-        self.logger.info(f"{self.add_crow_fly_distances.__name__} - Crow fly distances added for {len(self.all_place_ids)} places")
+        self.logger.info(f"{self.add_crow_fly_distances.__name__} - Crow fly distances added/updated for {len(self.all_place_ids)} places")
 
     def format_weekday_text(self, opening_hours):
         '''not working'''
@@ -589,78 +736,67 @@ class AddressResearcher:
         print(f"Data saved to CSV file at {csv_file_path}")
         self.logger.info(f"{self.run_searches_and_save.__name__} - Data saved to CSV file at {csv_file_path}")
 
-# Main execution
+# # Main execution
+# if __name__ == "__main__":
+#     for address in addresses_list:
+#         logging.info(f"Processing address: {address}")
+#         address_researcher = AddressResearcher(address)
+#         address_researcher.run_searches_and_save()   
+        
+# Define a list of names to skip
+names_to_skip = []
+
+# # Main execution with skip list
+# if __name__ == "__main__":
+#     for address in addresses_list:
+#         # Extract the name (key) from the restaurant_addresses dictionary using the address
+#         name = [key for key, value in restaurant_addresses.items() if value == address][0]
+        
+#         # Check if the name is in the list of names to skip
+#         if name in names_to_skip:
+#             continue  
+
+#         logging.info(f"Processing address: {address}")
+#         address_researcher = AddressResearcher(address)
+#         address_researcher.run_searches_and_save()
+        
+# Streamlined version of the above main execution block
 if __name__ == "__main__":
-    for address in addresses_list:
-        logging.info(f"Processing address: {address}")
+    for name, address in restaurant_addresses.items():  # Iterate directly over dictionary items
+        if name in names_to_skip:
+            continue  # Skip the addresses whose names are in the names_to_skip list
+
+        logging.info(f"Processing address for {name}: {address}")
         address_researcher = AddressResearcher(address)
-        address_researcher.run_searches_and_save()   
+        address_researcher.run_searches_and_save()    
         
         
         
-'''
-
-imports and constants are all set up. omitted for brevity.
-
-please help me get all these done and ensure i'm saving the files correctly and i need to add the mechanism for adding the "last updated" stamp to each search result and then checking for it when running against the cached data to ensure we aren't re-running api calls for objects that have place details data that's less than 2 days old.
-
-notice the address variable is set to a string. this is the address that will be used to search for restaurants and then gather data about them.
-this string is appended to the saved filenames after all commas are removed and all spaces are replaced with underscores.
-the names of these saved files will be restaurant_data_9_9th_Ave_New_York_NY_10014.json and restaurant_data_9_9th_Ave_New_York_NY_10014.csv
-
-make sure your approach handles the caching, loading, querying, cross-checking, flow, and re-updating of the data updating correctly in the code. 
-make sure datetime stamps are correctly added and checked to prevent errors.
-
-here's the desired functionality when the code executes:
-
-the file paths for the saved json and csv files are constructed based on the source address string and the file drop path environment variable.
-
-##------- CHATGPT INSTRUCTIONS HERE:
-
-OK, so here are the main issues:
-self.all_place_ids gets initialized with the class and used directly within the google api search nearby and text search methods to prevent duplicate records. 
-But then, during the run searches and save main execution function, another all_place_ids gets created and used. 
-the same thing kind of happens with self.data and cached_data, but the variable cached_data is not used in the code yet. 
-it's intended purpose is to load the pre-existing json data into memory so that it can be compared against the new results to see if the new results are more up to date and if there are any place_ids that already have place details data so we can skip the api call for records that already have the enriched data from a prior run.
-
-please tell me how to correctly route all these variables and ensure they are all "self. " versions rather than method specific versions, and let's make sure to combine them correctly if we need to do that or re-name them with unique names if they need to stay separate to maintain the cirrect flow and execution logic for what i described.
-do not write many new functions and bloat the code. i'm only looking for a couple tweaks.
-please tell me in detail where these should go and every change i need to make to my existing code to do all of this correctly. 
-do not add too many new lines of code. we want to minimize the length of this script. as few functions and as few lines of code as possible to get the job done.
-make sure all of your code is correct and then tell me all the new code again in the simplest way you can that conveys all the info.
-please help me get all these done and ensure i'm saving the files correctly and i need to add the mechanism for adding the "last updated" stamp to each search result and then checking for it when running against the cached data to ensure we aren't re-running api calls for objects that have place details data that's less than 2 days old.
-verify that a place will not be skipped for place details api call if only the place_id exists in the self.all_place_ids set and in the self.data cached data and/or overwritten recent search results. 
-also verify that the search query functions themselves won't simply overwrite the cached data while they execute their searches during each run.;
-
-
-
-To ensure that places are not skipped for Place Details API calls incorrectly and that search query functions do not overwrite cached data without due checks, follow these guidelines:
-
-Check for Existing Data with Timestamp: Before deciding to skip fetching place details, check if the place ID exists in self.data. If it exists, verify that the last_updated timestamp is within the acceptable range (e.g., less than 2 days old). Only skip the API call if both conditions are met.
-
-Prevent Overwriting of Fresh Data: When processing search results, before updating self.data with new information, check if the existing data for a place ID is still fresh (i.e., the last_updated timestamp is less than 2 days old). If it is, do not overwrite it with new search results. This ensures that detailed data that was recently fetched isn't lost.
-
-Implementation Steps:
-In query_google_text_search and query_google_nearby_search methods:
-When adding place IDs to self.all_place_ids, do not immediately update self.data with the search result. Only update self.data after checking if detailed information needs to be fetched.
-In get_place_details method:
-Before fetching details, check if the place ID already exists in self.data with a recent last_updated timestamp. Fetch details only if necessary.
-After fetching details, add or update the entry in self.data with the new details and the current timestamp.
-In run_searches_and_save method:
-When iterating over self.all_place_ids, first check if each place ID exists in self.data and whether the data is fresh.
-Fetch and update details only for those place IDs that don't have fresh data in self.data.
-we need to make sure there is robustness and error handling in the places where we check the last updated date anywhere we do that. 
-
-'''
         
         
         
-    
-    
-    
-    
-    
-    
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+# example of the place details data structure (all restaurants in the data dictionary will have this type of structure, but some fields may be missing from some of the records)
     
 '''
 
@@ -949,26 +1085,7 @@ we need to make sure there is robustness and error handling in the places where 
         
         
         
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
+    
         
 #     def process_missing_coordinate_places(self, missing_places, origin_lat, origin_lng):
 #         # Google Maps Distance Matrix API endpoint
