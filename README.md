@@ -21,10 +21,10 @@ git branch -M main
 git push -u origin main
 pip install --upgrade pip
 pip install certifi beautifulsoup4 selenium python-dotenv requests webdriver-manager pandas fake_useragent ndg-httpsclient pyasn1 google-generativeai google-api-python-client howdoi wikipedia ipython jupyter tqdm Pyarrow simplekml pyopenssl folium branca geopy overpy wikipedia pandas-datareader pyowm eurostat wikipedia-api mwparserfromhell
-```
 
-## Download the correct version of the google chrome driver from this link, unzip it, and place it in your project directory:
+Download the correct version of the google chrome driver from this link, unzip it, and place it in your project directory:
 - https://googlechromelabs.github.io/chrome-for-testing/#stable
+```
 
 # Roadmap & Future Updates
 
