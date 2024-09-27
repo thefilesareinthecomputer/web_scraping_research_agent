@@ -33,10 +33,10 @@ Download the correct version of the google chrome driver from this link, unzip i
 Outputs:
 [complete] - a json file containing the data
 [complete] - a csv file containing the data
+[complete] - a static html file containing all the data on a map with nice formatting
 - a kml file containing the multiple layers of data on a map
 - a geojson file containing the data
 - a formatted report of slides containing the data as a presentation
-- a static html file containing all the data on a map with nice formatting
 - an interactive dashboard web app containing the data with dropdown filters for all categorical data
 ```
 
