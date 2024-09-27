@@ -1,29 +1,46 @@
+# Description
+
+## Module description: 
+- A search automation tool designed to gather all available public data about restaurants within proximity of a given list of addresses. 
+- Can easily be adapted to search for other types of businesses or points of interest.
+
+## Module functional summary: 
+This module is a web scraping research agent that uses the Google Maps API to find nearby restaurants based on a provided address and then scrapes their websites for menu links. The data is then saved to a JSON file and a CSV file. 
+
 # Initial Setup
 
 ## Terminal commands to create a virtual environment, git repo, github repo, and install dependencies
 ```
 python3.11 -m venv {"your venv name here"}
 source {"your venv name here"}/bin/activate
-deactivate
 git init
 git add .
-git commit -m "init"
+git commit -m "initial commit"
 git remote add origin https://github.com/{"your github name here"}/{"your venv name here"}
 git branch -M main
 git push -u origin main
-source {"your venv name here"}/bin/activate
-pip install --upgrade pip certifi
-pip install beautifulsoup4 selenium python-dotenv requests webdriver-manager pandas fake_useragent ndg-httpsclient pyasn1 google-generativeai google-api-python-client howdoi wikipedia ipython jupyter tqdm Pyarrow simplekml pyopenssl folium branca geopy overpy wikipedia pandas-datareader pyowm eurostat wikipedia-api mwparserfromhell
+pip install --upgrade pip
+pip install certifi beautifulsoup4 selenium python-dotenv requests webdriver-manager pandas fake_useragent ndg-httpsclient pyasn1 google-generativeai google-api-python-client howdoi wikipedia ipython jupyter tqdm Pyarrow simplekml pyopenssl folium branca geopy overpy wikipedia pandas-datareader pyowm eurostat wikipedia-api mwparserfromhell
 ```
 
 ## Download the correct version of the google chrome driver from this link, unzip it, and place it in your project directory:
-https://googlechromelabs.github.io/chrome-for-testing/#stable
+- https://googlechromelabs.github.io/chrome-for-testing/#stable
 
-## Module description: 
-A search automation tool designed to gather all available public data about restaurants within proximity of a given list of addresses. 
+# Roadmap & Future Updates
 
-## Module functional summary: 
-This module is a web scraping research agent that uses the Google Maps API to find nearby restaurants based on a provided address and then scrapes their websites for menu links. The data is then saved to a JSON file and a CSV file. 
+## Output features:
+```
+Outputs:
+[complete] - a json file containing the data
+[complete] - a csv file containing the data
+- a kml file containing the multiple layers of data on a map
+- a geojson file containing the data
+- a formatted report of slides containing the data as a presentation
+- a static html file containing all the data on a map with nice formatting
+- an interactive dashboard web app containing the data with dropdown filters for all categorical data
+```
+
+# Details
 
 ## Data sources:
 ```
@@ -33,6 +50,7 @@ API: Google Maps (geocode API + text search API + search nearby API + place deta
 UPCOMING:
 
 Python libraries specifically for data feeds or datasets:
+- foursquare places API
 - wikipedia
 - pandas-datareader
 - yfinance
@@ -151,14 +169,3 @@ QUEUE: use feature discovery to determine which features are most important for 
 QUEUE: once base classifications are determined, then classify all entities as "relevant" or "non-relevant" to our needs, begin keeping record of business names / types that are not relevant, and then modify the code to filter out those non-relevant records before calling the google place details api to avoid unnecessary api calls and charges.
 ```
 
-## Visualization Execution:
-```
-Outputs:
-[complete] - a json file containing the data
-[complete] - a csv file containing the data
-- a kml file containing the multiple layers of data on a map
-- a geojson file containing the data
-- a formatted report of slides containing the data as a presentation
-- a static html file containing all the data on a map with nice formatting
-- an interactive dashboard web app containing the data with dropdown filters for all categorical data
-```
