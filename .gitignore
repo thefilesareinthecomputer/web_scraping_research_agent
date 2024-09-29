@@ -8,6 +8,7 @@ reports_backup/
 reports_processed/
 reports_processed_backup/
 src/map_files/
+utilities/
 web_scraping_research_agent/
 address_data_sources.json
 address_main_restaurants.json
