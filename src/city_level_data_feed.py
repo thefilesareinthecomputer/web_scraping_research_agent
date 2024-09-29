@@ -103,61 +103,6 @@ class WikiCityDataResearcher:
 with open(f'{script_directory}/address_secrets_restaurants.json', 'r') as file:
     restaurant_data_objects = json.load(file)
 
-'''
-# restaurant_data_objects contains data in this format for each location:
-
-
-
-
-911-943 Howell Mill Rd
-Atlanta, GA 30318, USA
-33.780285, -84.410530
-
-
-    "Atlanta": {
-        "address": "914 Howell Mill Rd, Atlanta, GA 30318",
-        "latitude": 33.780285,
-        "longitude": -84.410530,
-        "street_number": "914",
-        "street": "Howell Mill Rd",
-        "neighborhood": "Blandtown",
-        "city": "Atlanta",
-        "county": "Fulton County",
-        "state/region": "Georgia",
-        "country": "United States",
-        "zip_code": "30318",
-        "place_details": {
-            "formatted_phone_number": "(704) 790-4970",
-            "name": "RH Rooftop Restaurant Charlotte",
-            "opening_hours": {
-                "open_now": true,
-                "periods": [{"we dont need this data": "we dont need this data"}],
-                "weekday_text": [
-                    "Monday: 10:00\u202fAM\u2009\u2013\u20099:00\u202fPM",
-                    "Tuesday: 10:00\u202fAM\u2009\u2013\u20099:00\u202fPM",
-                    "Wednesday: 10:00\u202fAM\u2009\u2013\u20099:00\u202fPM",
-                    "Thursday: 10:00\u202fAM\u2009\u2013\u20099:00\u202fPM",
-                    "Friday: 10:00\u202fAM\u2009\u2013\u20099:00\u202fPM",
-                    "Saturday: 10:00\u202fAM\u2009\u2013\u20099:00\u202fPM",
-                    "Sunday: 10:00\u202fAM\u2009\u2013\u20099:00\u202fPM"
-                ]
-            },
-            "rating": 4.4,
-            "website": "http://www.rh.com/charlotte/restaurant"
-        },
-        "temp_five_day_range": 28.590000000000003,
-        "temp_five_day_average": 49.670749999999984,
-        "temp_five_day_average_daytime": 55.85266666666665,
-        "temp_five_day_average_nighttime": 45.38333333333333,
-        "tag": "CLT",
-        "region": "EAST",
-        "local_currency": "USD",
-        "menu_concepts": [
-            "Core"
-        ]
-    },
-'''
-
 # Initialize an empty list to hold the cities
 cities = []
 

@@ -105,53 +105,6 @@ class WikiCityDataResearcher:
 with open(f'{script_directory}/address_secrets_restaurants.json', 'r') as file:
     restaurant_data_objects = json.load(file)
 
-'''
-# restaurant_data_objects contains data in this format for each location:
-
-    "Charlotte": {
-        "address": "6903 Phillips Pl Ct, Charlotte, NC 28210",
-        "latitude": 35.1460556,
-        "longitude": -80.82519239999999,
-        "street_number": "6903",
-        "street": "Phillips Place Court",
-        "neighborhood": "Foxcroft",
-        "city": "Charlotte",
-        "county": "Mecklenburg County",
-        "state/region": "North Carolina",
-        "country": "United States",
-        "zip_code": "28210",
-        "place_details": {
-            "formatted_phone_number": "(704) 790-4970",
-            "name": "RH Rooftop Restaurant Charlotte",
-            "opening_hours": {
-                "open_now": true,
-                "periods": [{"we dont need this data": "we dont need this data"}],
-                "weekday_text": [
-                    "Monday: 10:00\u202fAM\u2009\u2013\u20099:00\u202fPM",
-                    "Tuesday: 10:00\u202fAM\u2009\u2013\u20099:00\u202fPM",
-                    "Wednesday: 10:00\u202fAM\u2009\u2013\u20099:00\u202fPM",
-                    "Thursday: 10:00\u202fAM\u2009\u2013\u20099:00\u202fPM",
-                    "Friday: 10:00\u202fAM\u2009\u2013\u20099:00\u202fPM",
-                    "Saturday: 10:00\u202fAM\u2009\u2013\u20099:00\u202fPM",
-                    "Sunday: 10:00\u202fAM\u2009\u2013\u20099:00\u202fPM"
-                ]
-            },
-            "rating": 4.4,
-            "website": "http://www.rh.com/charlotte/restaurant"
-        },
-        "temp_five_day_range": 28.590000000000003,
-        "temp_five_day_average": 49.670749999999984,
-        "temp_five_day_average_daytime": 55.85266666666665,
-        "temp_five_day_average_nighttime": 45.38333333333333,
-        "tag": "CLT",
-        "region": "EAST",
-        "local_currency": "USD",
-        "menu_concepts": [
-            "Core"
-        ]
-    },
-'''
-
 # Initialize an empty list to hold the cities
 cities = []
 
