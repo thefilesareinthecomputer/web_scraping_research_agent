@@ -106,18 +106,26 @@ with open(f'{script_directory}/address_secrets_restaurants.json', 'r') as file:
 '''
 # restaurant_data_objects contains data in this format for each location:
 
-    "Charlotte": {
-        "address": "6903 Phillips Pl Ct, Charlotte, NC 28210",
-        "latitude": 35.1460556,
-        "longitude": -80.82519239999999,
-        "street_number": "6903",
-        "street": "Phillips Place Court",
-        "neighborhood": "Foxcroft",
-        "city": "Charlotte",
-        "county": "Mecklenburg County",
-        "state/region": "North Carolina",
+
+
+
+911-943 Howell Mill Rd
+Atlanta, GA 30318, USA
+33.780285, -84.410530
+
+
+    "Atlanta": {
+        "address": "914 Howell Mill Rd, Atlanta, GA 30318",
+        "latitude": 33.780285,
+        "longitude": -84.410530,
+        "street_number": "914",
+        "street": "Howell Mill Rd",
+        "neighborhood": "Blandtown",
+        "city": "Atlanta",
+        "county": "Fulton County",
+        "state/region": "Georgia",
         "country": "United States",
-        "zip_code": "28210",
+        "zip_code": "30318",
         "place_details": {
             "formatted_phone_number": "(704) 790-4970",
             "name": "RH Rooftop Restaurant Charlotte",
